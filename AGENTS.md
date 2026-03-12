@@ -28,3 +28,9 @@ Build an AI-native project management tool where agents are first-class team mem
 - Use direct engineering judgment. Don't ask "should I...?" when the answer is obvious.
 - State what's necessary vs optional, with brief tradeoff reasoning.
 - Ask questions only when blocked or when scope/risk materially changes.
+
+## GitHub Workflow
+
+- `gh` is configured in this environment. Use the GitHub CLI for GitHub operations when needed.
+- Prefer `gh` over hand-rolled API calls or browser instructions for common tasks such as inspecting repos, issues, PRs, workflow runs, and auth-backed GitHub interactions.
+- When creating commits locally, use the repository's configured git identity rather than ad hoc placeholder names.
