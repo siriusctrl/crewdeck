@@ -39,6 +39,7 @@ export interface CardDetail extends Card {
   assignee?: Actor;
   reviewer?: Actor;
   comments: CommentDetail[];
+  runs: AgentRunDetail[];
 }
 
 export interface Comment {
@@ -68,6 +69,31 @@ export interface AgentRun {
   status: AgentRunStatus;
   summary: string;
   createdAt: string;
+}
+
+export interface AgentRunDetail extends AgentRun {
+  actor: Actor;
+}
+
+export interface AgentExecutionContext {
+  actor: Actor;
+  board: Board;
+  card: CardDetail;
+  now: string;
+}
+
+export interface AgentExecutionOutput {
+  status: AgentRunStatus;
+  summary: string;
+  commentBody: string;
+  nextStatus?: CardStatus;
+}
+
+export interface AgentAdapter {
+  backend: AgentBackend;
+  label: string;
+  supports(actor: Actor): boolean;
+  execute(context: AgentExecutionContext): AgentExecutionOutput;
 }
 
 export interface CreateBoardInput {
@@ -161,6 +187,13 @@ export function normalizeLabels(labels?: string[]): string[] {
         .filter((label) => label.length > 0),
     ),
   );
+}
+
+export function isAgentActor(actor: Actor | undefined): actor is Actor & {
+  type: "agent";
+  backend: AgentBackend;
+} {
+  return Boolean(actor && actor.type === "agent" && actor.backend);
 }
 
 export function createBoard(

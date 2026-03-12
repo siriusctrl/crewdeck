@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
+import { listAgentAdapters } from "./adapters";
 import {
   createBoardRecord,
   createCardRecord,
@@ -22,6 +23,7 @@ app.use("/api/*", cors());
 app.get("/api/health", (c) => c.json({ ok: true }));
 
 app.get("/api/actors", (c) => c.json({ data: listActors() }));
+app.get("/api/agent-adapters", (c) => c.json({ data: listAgentAdapters() }));
 
 app.get("/api/boards", (c) => c.json({ data: listBoards() }));
 
@@ -148,7 +150,8 @@ app.post("/api/cards/:cardId/agent-updates", async (c) => {
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Unable to create agent update";
-    const status = message === "Card not found" ? 404 : 400;
+    const status =
+      message === "Card not found" || message === "Board not found" ? 404 : 400;
     return c.json({ error: message }, status);
   }
 });

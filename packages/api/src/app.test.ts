@@ -30,4 +30,29 @@ describe("@crewdeck/api", () => {
     expect(cardsResponse.status).toBe(200);
     expect(cardsPayload.data.cards.length).toBeGreaterThan(0);
   });
+
+  it("routes agent updates through the adapter registry", async () => {
+    const runResponse = await app.request("/api/cards/card-adapter/agent-updates", {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const runPayload = (await runResponse.json()) as {
+      data: { actorId: string; status: string };
+    };
+
+    expect(runResponse.status).toBe(201);
+    expect(runPayload.data.actorId).toBe("agent-claude");
+    expect(runPayload.data.status).toBe("completed");
+
+    const cardResponse = await app.request("/api/cards/card-adapter");
+    const cardPayload = (await cardResponse.json()) as {
+      data: { status: string; runs: Array<{ actorId: string }> };
+    };
+
+    expect(cardPayload.data.status).toBe("review");
+    expect(cardPayload.data.runs[0]?.actorId).toBe("agent-claude");
+  });
 });

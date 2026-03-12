@@ -8,10 +8,12 @@ import {
   createBoard,
   createCard,
   createComment,
+  isAgentActor,
   reassignCard,
   transitionCard,
   type Actor,
   type AgentRun,
+  type AgentRunDetail,
   type Board,
   type Card,
   type CardDetail,
@@ -22,6 +24,8 @@ import {
   type UpdateCardAssignmentInput,
   type CardStatus,
 } from "@crewdeck/core";
+import { getAgentAdapter } from "./adapters";
+import { runMigrations } from "./migrations";
 
 type DbRow = Record<string, unknown>;
 
@@ -36,70 +40,7 @@ mkdirSync(dataDir, { recursive: true });
 
 const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS boards (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    repo_url TEXT,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS actors (
-    id TEXT PRIMARY KEY,
-    type TEXT NOT NULL,
-    name TEXT NOT NULL,
-    backend TEXT,
-    is_system INTEGER NOT NULL DEFAULT 0
-  );
-
-  CREATE TABLE IF NOT EXISTS cards (
-    id TEXT PRIMARY KEY,
-    board_id TEXT NOT NULL,
-    title TEXT NOT NULL,
-    description TEXT,
-    status TEXT NOT NULL,
-    assignee_id TEXT,
-    reviewer_id TEXT,
-    labels_json TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
-    FOREIGN KEY(board_id) REFERENCES boards(id),
-    FOREIGN KEY(assignee_id) REFERENCES actors(id),
-    FOREIGN KEY(reviewer_id) REFERENCES actors(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS comments (
-    id TEXT PRIMARY KEY,
-    card_id TEXT NOT NULL,
-    author_id TEXT NOT NULL,
-    body TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(card_id) REFERENCES cards(id),
-    FOREIGN KEY(author_id) REFERENCES actors(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS automation_rules (
-    id TEXT PRIMARY KEY,
-    board_id TEXT NOT NULL,
-    on_status TEXT NOT NULL,
-    action TEXT NOT NULL,
-    target_actor_id TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS agent_runs (
-    id TEXT PRIMARY KEY,
-    card_id TEXT NOT NULL,
-    actor_id TEXT NOT NULL,
-    status TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    created_at TEXT NOT NULL,
-    FOREIGN KEY(card_id) REFERENCES cards(id),
-    FOREIGN KEY(actor_id) REFERENCES actors(id)
-  );
-`);
+runMigrations(db);
 
 function now(): string {
   return new Date().toISOString();
@@ -156,6 +97,18 @@ function rowToComment(row: DbRow, author: Actor): CommentDetail {
   };
 }
 
+function rowToAgentRun(row: DbRow, actor: Actor): AgentRunDetail {
+  return {
+    id: String(row.id),
+    cardId: String(row.card_id),
+    actorId: String(row.actor_id),
+    status: String(row.status) as AgentRun["status"],
+    summary: String(row.summary),
+    createdAt: String(row.created_at),
+    actor,
+  };
+}
+
 function insertBoard(board: Board): void {
   db.prepare(
     `
@@ -205,6 +158,16 @@ function insertCommentRecord(comment: ReturnType<typeof createComment>): void {
       VALUES (@id, @cardId, @authorId, @body, @createdAt)
     `,
   ).run(comment);
+}
+
+function touchCard(cardId: string, updatedAt: string): void {
+  db.prepare(
+    `
+      UPDATE cards
+      SET updated_at = ?
+      WHERE id = ?
+    `,
+  ).run(updatedAt, cardId);
 }
 
 function upsertActor(actor: Actor): void {
@@ -416,6 +379,26 @@ function getActorMap(): Map<string, Actor> {
   return new Map(listActors().map((actor) => [actor.id, actor]));
 }
 
+export function listCardRuns(cardId: string): AgentRunDetail[] {
+  const actorMap = getActorMap();
+
+  return (
+    db
+      .prepare(
+        "SELECT * FROM agent_runs WHERE card_id = ? ORDER BY created_at DESC",
+      )
+      .all(cardId) as DbRow[]
+  ).flatMap((runRow) => {
+    const actor = actorMap.get(String(runRow.actor_id));
+
+    if (!actor) {
+      return [];
+    }
+
+    return [rowToAgentRun(runRow, actor)];
+  });
+}
+
 export function getCardDetail(cardId: string): CardDetail | undefined {
   const row = db
     .prepare("SELECT * FROM cards WHERE id = ?")
@@ -449,6 +432,7 @@ export function getCardDetail(cardId: string): CardDetail | undefined {
     assignee: card.assigneeId ? actorMap.get(card.assigneeId) : undefined,
     reviewer: card.reviewerId ? actorMap.get(card.reviewerId) : undefined,
     comments,
+    runs: listCardRuns(card.id),
   };
 }
 
@@ -519,6 +503,7 @@ export function createCommentRecord(
 
   const comment = createComment(cardId, input, now(), randomUUID());
   insertCommentRecord(comment);
+  touchCard(cardId, comment.createdAt);
 
   return {
     ...comment,
@@ -539,17 +524,38 @@ export function createDemoAgentUpdate(cardId: string, note?: string): AgentRun {
     throw new Error("Card not found");
   }
 
-  if (!card.assignee || card.assignee.type !== "agent") {
+  if (!isAgentActor(card.assignee)) {
     throw new Error("Card must be assigned to an agent");
   }
 
-  const summary = note?.trim() || demoUpdates[Math.floor(Math.random() * demoUpdates.length)];
   const createdAt = now();
+  const board = getBoard(card.boardId);
+
+  if (!board) {
+    throw new Error("Board not found");
+  }
+
+  const adapter = getAgentAdapter(card.assignee);
+
+  if (!adapter) {
+    throw new Error(`No adapter registered for backend ${card.assignee.backend}`);
+  }
+
+  const execution = adapter.execute({
+    actor: card.assignee,
+    board,
+    card,
+    now: createdAt,
+  });
+  const summary =
+    note?.trim() ||
+    execution.summary ||
+    demoUpdates[Math.floor(Math.random() * demoUpdates.length)]!;
   const run: AgentRun = {
     id: randomUUID(),
     cardId,
     actorId: card.assignee.id,
-    status: "completed",
+    status: execution.status,
     summary,
     createdAt,
   };
@@ -566,12 +572,28 @@ export function createDemoAgentUpdate(cardId: string, note?: string): AgentRun {
       cardId,
       {
         authorId: card.assignee.id,
-        body: summary,
+        body: note?.trim() || execution.commentBody,
       },
       createdAt,
       randomUUID(),
     ),
   );
+  touchCard(cardId, createdAt);
+
+  if (
+    execution.nextStatus &&
+    execution.nextStatus !== card.status
+  ) {
+    const nextCard = transitionCard(card, execution.nextStatus, createdAt);
+
+    db.prepare(
+      `
+        UPDATE cards
+        SET status = @status, updated_at = @updatedAt
+        WHERE id = @id
+      `,
+    ).run(nextCard);
+  }
 
   return run;
 }

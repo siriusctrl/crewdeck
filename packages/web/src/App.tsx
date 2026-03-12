@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 
 import type { Actor, Board, Card, CardDetail, CardStatus } from "@crewdeck/core";
-import { cardStatuses } from "@crewdeck/core";
+import { canTransitionCard, cardStatuses } from "@crewdeck/core";
 
 import {
   createCard as createCardRequest,
@@ -62,6 +62,8 @@ export default function App() {
   const [selectedBoardId, setSelectedBoardId] = useState<string>();
   const [selectedCardId, setSelectedCardId] = useState<string>();
   const [selectedCard, setSelectedCard] = useState<CardDetail>();
+  const [draggedCardId, setDraggedCardId] = useState<string>();
+  const [dragOverStatus, setDragOverStatus] = useState<CardStatus>();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string>();
@@ -70,6 +72,18 @@ export default function App() {
   const [draftAssigneeId, setDraftAssigneeId] = useState<string>("agent-codex");
   const [draftReviewerId, setDraftReviewerId] = useState<string>("human-you");
   const [commentBody, setCommentBody] = useState("");
+
+  const selectedBoard = boards.find((board) => board.id === selectedBoardId);
+  const draggedCard = cards.find((card) => card.id === draggedCardId);
+
+  const groupedCards = useMemo(() => {
+    return Object.fromEntries(
+      cardStatuses.map((status) => [
+        status,
+        cards.filter((card) => card.status === status),
+      ]),
+    ) as Record<CardStatus, Card[]>;
+  }, [cards]);
 
   useEffect(() => {
     async function boot() {
@@ -116,7 +130,7 @@ export default function App() {
     }
 
     void loadBoard();
-  }, [selectedBoardId, selectedCardId]);
+  }, [selectedBoardId]);
 
   useEffect(() => {
     if (!selectedCardId) {
@@ -137,15 +151,6 @@ export default function App() {
     void loadCard();
   }, [selectedCardId]);
 
-  const groupedCards = useMemo(() => {
-    return Object.fromEntries(
-      cardStatuses.map((status) => [
-        status,
-        cards.filter((card) => card.status === status),
-      ]),
-    ) as Record<CardStatus, Card[]>;
-  }, [cards]);
-
   async function refreshBoardAndCard(cardId?: string) {
     if (!selectedBoardId) {
       return;
@@ -159,7 +164,26 @@ export default function App() {
     if (nextCardId) {
       setSelectedCardId(nextCardId);
       setSelectedCard(await getCard(nextCardId));
+    } else {
+      setSelectedCard(undefined);
     }
+  }
+
+  function canDropInto(status: CardStatus): boolean {
+    if (!draggedCard) {
+      return false;
+    }
+
+    if (draggedCard.status === status) {
+      return false;
+    }
+
+    return canTransitionCard(draggedCard.status, status);
+  }
+
+  function resetDragState(): void {
+    setDraggedCardId(undefined);
+    setDragOverStatus(undefined);
   }
 
   async function handleCreateCard(event: React.FormEvent<HTMLFormElement>) {
@@ -192,25 +216,25 @@ export default function App() {
     }
   }
 
-  async function handleStatusChange(status: CardStatus) {
-    if (!selectedCard) {
-      return;
-    }
-
+  async function moveCard(cardId: string, status: CardStatus) {
     setIsSaving(true);
     setError(undefined);
 
     try {
-      await updateCardStatus(selectedCard.id, status);
-      await refreshBoardAndCard(selectedCard.id);
+      await updateCardStatus(cardId, status);
+      await refreshBoardAndCard(cardId);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to move card");
     } finally {
       setIsSaving(false);
+      resetDragState();
     }
   }
 
-  async function handleAssignmentChange(kind: "assigneeId" | "reviewerId", value: string) {
+  async function handleAssignmentChange(
+    kind: "assigneeId" | "reviewerId",
+    value: string,
+  ) {
     if (!selectedCard) {
       return;
     }
@@ -220,8 +244,10 @@ export default function App() {
 
     try {
       await updateCardAssignment(selectedCard.id, {
-        assigneeId: kind === "assigneeId" ? value || undefined : selectedCard.assigneeId,
-        reviewerId: kind === "reviewerId" ? value || undefined : selectedCard.reviewerId,
+        assigneeId:
+          kind === "assigneeId" ? value || undefined : selectedCard.assigneeId,
+        reviewerId:
+          kind === "reviewerId" ? value || undefined : selectedCard.reviewerId,
       });
       await refreshBoardAndCard(selectedCard.id);
     } catch (cause) {
@@ -306,7 +332,9 @@ export default function App() {
               {boards.map((board) => (
                 <button
                   key={board.id}
-                  className={board.id === selectedBoardId ? "board-chip active" : "board-chip"}
+                  className={
+                    board.id === selectedBoardId ? "board-chip active" : "board-chip"
+                  }
                   onClick={() => {
                     startTransition(() => {
                       setSelectedBoardId(board.id);
@@ -383,47 +411,113 @@ export default function App() {
           <header className="board-header">
             <div>
               <p className="eyebrow">Board view</p>
-              <h2>{boards.find((board) => board.id === selectedBoardId)?.name}</h2>
+              <h2>{selectedBoard?.name}</h2>
             </div>
             <p>
-              The MVP keeps the loop tight: assign, execute, review, finish.
+              Drag cards across lanes on desktop. The detail panel still keeps
+              mobile-first state buttons as a fallback.
             </p>
           </header>
 
           <div className="kanban">
-            {columns.map((column) => (
-              <section key={column.status} className={`column status-${column.status}`}>
-                <header>
-                  <p>{column.eyebrow}</p>
-                  <h3>{column.label}</h3>
-                </header>
+            {columns.map((column) => {
+              const isDropReady = canDropInto(column.status);
+              const isDropActive = dragOverStatus === column.status && isDropReady;
 
-                <div className="column-stack">
-                  {groupedCards[column.status].map((card) => (
-                    <button
-                      key={card.id}
-                      className={card.id === selectedCardId ? "task-card active" : "task-card"}
-                      onClick={() => setSelectedCardId(card.id)}
-                      type="button"
-                    >
-                      <span className="task-status">{formatStatus(card.status)}</span>
-                      <strong>{card.title}</strong>
-                      <p>{card.description || "No description yet."}</p>
-                      <footer>
-                        <span>{actorLabel(card.assigneeId, actors)}</span>
-                        <span>{card.labels[0] || "general"}</span>
-                      </footer>
-                    </button>
-                  ))}
+              return (
+                <section
+                  key={column.status}
+                  className={[
+                    "column",
+                    `status-${column.status}`,
+                    isDropReady ? "drop-ready" : "",
+                    isDropActive ? "drop-active" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onDragOver={(event) => {
+                    if (!isDropReady) {
+                      return;
+                    }
 
-                  {groupedCards[column.status].length === 0 ? (
-                    <div className="empty-slot">
-                      <span>Nothing parked here yet.</span>
+                    event.preventDefault();
+                    setDragOverStatus(column.status);
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverStatus === column.status) {
+                      setDragOverStatus(undefined);
+                    }
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+
+                    if (!draggedCard || !isDropReady) {
+                      resetDragState();
+                      return;
+                    }
+
+                    void moveCard(draggedCard.id, column.status);
+                  }}
+                >
+                  <header>
+                    <div>
+                      <p>{column.eyebrow}</p>
+                      <h3>{column.label}</h3>
                     </div>
-                  ) : null}
-                </div>
-              </section>
-            ))}
+                    <span className="column-count">
+                      {groupedCards[column.status].length}
+                    </span>
+                  </header>
+
+                  <div className="column-stack">
+                    {groupedCards[column.status].map((card) => {
+                      const isDragging = draggedCardId === card.id;
+
+                      return (
+                        <button
+                          key={card.id}
+                          className={[
+                            "task-card",
+                            card.id === selectedCardId ? "active" : "",
+                            isDragging ? "dragging" : "",
+                          ]
+                            .filter(Boolean)
+                            .join(" ")}
+                          draggable
+                          onClick={() => setSelectedCardId(card.id)}
+                          onDragStart={(event) => {
+                            event.dataTransfer.effectAllowed = "move";
+                            event.dataTransfer.setData("text/plain", card.id);
+                            setDraggedCardId(card.id);
+                            setSelectedCardId(card.id);
+                          }}
+                          onDragEnd={() => resetDragState()}
+                          type="button"
+                        >
+                          <span className="task-status">{formatStatus(card.status)}</span>
+                          <strong>{card.title}</strong>
+                          <p>{card.description || "No description yet."}</p>
+                          <footer>
+                            <span>{actorLabel(card.assigneeId, actors)}</span>
+                            <span>{card.labels[0] || "general"}</span>
+                          </footer>
+                        </button>
+                      );
+                    })}
+
+                    {groupedCards[column.status].length === 0 ? (
+                      <div className="empty-slot">
+                        <span>
+                          {isDropReady
+                            ? "Drop the selected card here."
+                            : "Nothing parked here yet."}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+              );
+            })}
           </div>
         </section>
 
@@ -476,7 +570,7 @@ export default function App() {
                   <button
                     key={status}
                     className="ghost-button"
-                    onClick={() => void handleStatusChange(status)}
+                    onClick={() => void moveCard(selectedCard.id, status)}
                     type="button"
                   >
                     Move to {formatStatus(status)}
@@ -485,10 +579,39 @@ export default function App() {
               </div>
 
               {selectedCard.assignee?.type === "agent" ? (
-                <button className="accent-button" onClick={() => void handlePingAgent()} type="button">
+                <button
+                  className="accent-button"
+                  onClick={() => void handlePingAgent()}
+                  type="button"
+                >
                   Ping {selectedCard.assignee.name}
                 </button>
               ) : null}
+
+              <div className="thread">
+                <div className="panel-heading">
+                  <p className="eyebrow">Agent runs</p>
+                  <h3>Execution should leave a reviewable trail.</h3>
+                </div>
+                <div className="run-list">
+                  {selectedCard.runs.length > 0 ? (
+                    selectedCard.runs.map((run) => (
+                      <article key={run.id} className="run-entry">
+                        <header>
+                          <strong>{run.actor.name}</strong>
+                          <span>{new Date(run.createdAt).toLocaleString()}</span>
+                        </header>
+                        <p>{run.summary}</p>
+                        <small>{run.status}</small>
+                      </article>
+                    ))
+                  ) : (
+                    <div className="empty-slot compact">
+                      <span>No agent runs recorded yet.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <div className="thread">
                 <div className="panel-heading">

@@ -1,5 +1,6 @@
 import type {
   Actor,
+  AgentRun,
   Board,
   Card,
   CardDetail,
@@ -93,7 +94,7 @@ export function createComment(
   });
 }
 
-export function pingAgent(cardId: string, note?: string): Promise<void> {
+export function pingAgent(cardId: string, note?: string): Promise<AgentRun> {
   return request(`/api/cards/${cardId}/agent-updates`, {
     method: "POST",
     body: JSON.stringify({ note }),
