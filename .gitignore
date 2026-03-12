@@ -4,3 +4,4 @@ dist
 *.local
 .agents/skills/
 .claude/skills/
+data/
