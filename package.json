@@ -7,11 +7,13 @@
     "dev": "corepack pnpm --parallel --filter @crewdeck/api --filter @crewdeck/web dev",
     "dev:api": "corepack pnpm --filter @crewdeck/api dev",
     "dev:web": "corepack pnpm --filter @crewdeck/web dev",
+    "test:frontend-smoke": "node scripts/frontend-smoke.mjs",
     "test": "corepack pnpm -r test",
     "typecheck": "corepack pnpm -r typecheck"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",
+    "playwright": "^1.58.2",
     "tsx": "^4.20.5",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
