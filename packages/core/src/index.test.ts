@@ -23,7 +23,7 @@ describe("@crewdeck/core", () => {
     );
   });
 
-  it("creates cards in backlog", () => {
+  it("creates cards in inbox", () => {
     const card = createCard(
       {
         boardId: "board-1",
@@ -34,7 +34,7 @@ describe("@crewdeck/core", () => {
       "card-1",
     );
 
-    expect(card.status).toBe("backlog");
+    expect(card.status).toBe("inbox");
     expect(card.labels).toEqual(["backend"]);
   });
 
@@ -54,7 +54,7 @@ describe("@crewdeck/core", () => {
 
     expect(() =>
       transitionCard(card, "done", "2026-03-12T01:00:00.000Z"),
-    ).toThrowError("Invalid card transition: backlog -> done");
+    ).toThrowError("Invalid card transition: inbox -> done");
   });
 
   it("requires comment bodies", () => {

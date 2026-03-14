@@ -1,4 +1,4 @@
-export const cardStatuses = ["backlog", "in_progress", "review", "done"] as const;
+export const cardStatuses = ["inbox", "in_progress", "review", "done"] as const;
 
 export type CardStatus = (typeof cardStatuses)[number];
 export type ActorType = "human" | "agent";
@@ -130,8 +130,8 @@ export interface DemoAgentUpdateInput {
 }
 
 const allowedTransitions: Record<CardStatus, CardStatus[]> = {
-  backlog: ["in_progress"],
-  in_progress: ["backlog", "review"],
+  inbox: ["in_progress"],
+  in_progress: ["inbox", "review"],
   review: ["in_progress", "done"],
   done: ["review"],
 };
@@ -221,7 +221,7 @@ export function createCard(
     boardId: input.boardId,
     title: normalizeTitle(input.title),
     description: normalizeOptionalText(input.description),
-    status: "backlog",
+    status: "inbox",
     assigneeId: input.assigneeId,
     reviewerId: input.reviewerId,
     labels: normalizeLabels(input.labels),

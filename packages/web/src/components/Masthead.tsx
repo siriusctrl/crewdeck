@@ -1,14 +1,7 @@
 import type { Board } from "@crewdeck/core";
 
 import type { ThemeName } from "../hooks/useTheme";
-import {
-  cn,
-  displayTitleClass,
-  eyebrowClass,
-  fieldClass,
-  ghostButtonClass,
-  pillClass,
-} from "../lib/ui";
+import { cn, displayTitleClass, fieldClass, ghostButtonClass } from "../lib/ui";
 import { ThemeToggle } from "./ThemeToggle";
 
 type MastheadProps = {
@@ -35,51 +28,44 @@ export function Masthead({
   onToggleTheme,
 }: MastheadProps) {
   return (
-    <section className="mb-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-      <div className="grid gap-[0.36rem]">
-        <p className={eyebrowClass}>Operator console</p>
-        <h1
-          className={cn(
-            displayTitleClass,
-            "max-w-[11ch] text-[clamp(1.85rem,3vw,2.75rem)] leading-[0.94]",
-          )}
-        >
-          {title}
-        </h1>
-      </div>
-      <div className="flex flex-wrap gap-2 xl:justify-end">
+    <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-4">
+        <h1 className={cn(displayTitleClass, "text-lg")}>{title}</h1>
         {boards.length > 1 ? (
-          <label className="sr-only" htmlFor="masthead-board-select">
-            Board
-          </label>
+          <>
+            <label className="sr-only" htmlFor="masthead-board-select">
+              Board
+            </label>
+            <select
+              id="masthead-board-select"
+              className={cn(fieldClass, "w-auto min-w-[140px] py-1.5 text-sm")}
+              value={selectedBoardId}
+              onChange={(event) => onBoardSelect(event.target.value)}
+            >
+              {boards.map((board) => (
+                <option key={board.id} value={board.id}>
+                  {board.name}
+                </option>
+              ))}
+            </select>
+          </>
         ) : null}
-        {boards.length > 1 ? (
-          <select
-            id="masthead-board-select"
-            className={cn(fieldClass, "min-w-[11.5rem] py-[0.7rem]")}
-            value={selectedBoardId}
-            onChange={(event) => onBoardSelect(event.target.value)}
-          >
-            {boards.map((board) => (
-              <option key={board.id} value={board.id}>
-                {board.name}
-              </option>
-            ))}
-          </select>
-        ) : null}
-        <button className={ghostButtonClass} onClick={onComposeNewCard} type="button">
-          New card
-        </button>
-        <ThemeToggle onToggle={onToggleTheme} theme={theme} />
-        <article className={cn(pillClass, "grid min-w-[7.4rem] gap-[0.2rem] px-3 py-2.5")}>
-          <span className={eyebrowClass}>Cards</span>
-          <strong className="text-base">{cardsCount}</strong>
-        </article>
-        <article className={cn(pillClass, "grid min-w-[7.4rem] gap-[0.2rem] px-3 py-2.5")}>
-          <span className={eyebrowClass}>Agents</span>
-          <strong className="text-base">{agentsCount}</strong>
-        </article>
       </div>
-    </section>
+      <div className="flex items-center gap-2">
+        <span className="text-[13px] text-[var(--muted)]">
+          {cardsCount} cards
+        </span>
+        <span className="text-[var(--line-strong)]">/</span>
+        <span className="text-[13px] text-[var(--muted)]">
+          {agentsCount} agents
+        </span>
+        <div className="ml-2 flex items-center gap-2">
+          <button className={ghostButtonClass} onClick={onComposeNewCard} type="button">
+            + New card
+          </button>
+          <ThemeToggle onToggle={onToggleTheme} theme={theme} />
+        </div>
+      </div>
+    </header>
   );
 }

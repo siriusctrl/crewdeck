@@ -27,6 +27,7 @@ export function TaskCard({
   onEndDrag,
 }: TaskCardProps) {
   const wasDraggingRef = useRef(false);
+  const didDragRef = useRef(false);
   const [isDragSettling, setIsDragSettling] = useState(false);
 
   useEffect(() => {
@@ -35,61 +36,71 @@ export function TaskCard({
       setIsDragSettling(false);
       return;
     }
-
-    if (!wasDraggingRef.current) {
-      return;
-    }
-
+    if (!wasDraggingRef.current) return;
     wasDraggingRef.current = false;
     setIsDragSettling(true);
-
     let secondFrame = 0;
     const firstFrame = window.requestAnimationFrame(() => {
       secondFrame = window.requestAnimationFrame(() => {
         setIsDragSettling(false);
       });
     });
-
     return () => {
       window.cancelAnimationFrame(firstFrame);
-      if (secondFrame) {
-        window.cancelAnimationFrame(secondFrame);
-      }
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
   }, [isDragging]);
 
   return (
     <button
       className={cn(
-        `task-card grid w-full transform-gpu gap-[0.56rem] rounded-[1.4rem] border border-transparent bg-[var(--paper-strong)] p-4 text-left text-[var(--ink)] shadow-[var(--shadow-soft)] transition-[transform,border-color,background-color,box-shadow,opacity] will-change-transform active:scale-[0.992] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--focus-ring)] ${motionSafeClass}`,
+        `task-card w-full rounded-lg border-l-[3px] border-transparent bg-[var(--paper-strong)] p-3 text-left shadow-[var(--card-shadow)] transition-[transform,box-shadow,border-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${motionSafeClass}`,
         isActive
-          ? "border-[var(--line-strong)] shadow-[0_20px_36px_rgba(0,0,0,0.2)]"
-          : "hover:-translate-y-0.5 hover:border-[var(--line-strong)] hover:shadow-[0_16px_28px_rgba(0,0,0,0.16)]",
-        isDragging && "cursor-grabbing opacity-55 shadow-[var(--shadow-soft)] transition-none",
+          ? "border-l-[var(--accent)] shadow-[var(--card-shadow-hover)]"
+          : "hover:-translate-y-0.5 hover:shadow-[var(--card-shadow-hover)]",
+        isDragging && "cursor-grabbing opacity-50 transition-none",
         isDragSettling && "transition-none",
       )}
+      data-card-id={card.id}
+      data-card-title={card.title}
       draggable
       onPointerDown={() => onPrimeDrag(card.id)}
-      onClick={() => onSelectCard(card.id)}
+      onClick={() => {
+        if (didDragRef.current) {
+          didDragRef.current = false;
+          return;
+        }
+        onSelectCard(card.id);
+      }}
       onDragStart={(event) => {
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", card.id);
+        didDragRef.current = true;
         onStartDrag(card.id);
       }}
-      onDragEnd={onEndDrag}
+      onDragEnd={() => {
+        window.requestAnimationFrame(() => {
+          didDragRef.current = false;
+        });
+        onEndDrag();
+      }}
       type="button"
     >
-      <span className="text-[0.7rem] uppercase tracking-[0.18em] text-[var(--accent)]">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--muted)]">
         {formatStatus(card.status)}
       </span>
-      <strong className="text-[1.05rem] leading-[1.12]">{card.title}</strong>
-      <p className="min-h-[4.15em] text-[0.95rem] text-[var(--muted)]">
-        {card.description || "No description."}
+      <p className="mt-1 text-sm font-medium leading-snug text-[var(--ink)]">
+        {card.title}
       </p>
-      <footer className="flex justify-between gap-3 text-[0.82rem] text-[var(--muted)]">
+      {card.description ? (
+        <p className="mt-1 line-clamp-2 text-[13px] text-[var(--muted)]">
+          {card.description}
+        </p>
+      ) : null}
+      <div className="mt-2 flex items-center justify-between text-[12px] text-[var(--muted)]">
         <span>{actorLabel(card.assigneeId, actors)}</span>
-        <span className="max-w-32 truncate">{card.labels[0] || "general"}</span>
-      </footer>
+        <span className="max-w-[100px] truncate">{card.labels[0] || "general"}</span>
+      </div>
     </button>
   );
 }

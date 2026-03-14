@@ -7,7 +7,7 @@ export type StatusColumn = {
 };
 
 export const columns: StatusColumn[] = [
-  { status: "backlog", label: "Backlog", eyebrow: "Collect" },
+  { status: "inbox", label: "Inbox", eyebrow: "Collect" },
   { status: "in_progress", label: "In Progress", eyebrow: "Build" },
   { status: "review", label: "Review", eyebrow: "Challenge" },
   { status: "done", label: "Done", eyebrow: "Archive" },
@@ -30,10 +30,10 @@ export function actorLabel(
 
 export function nextStatusOptions(status: CardStatus): CardStatus[] {
   switch (status) {
-    case "backlog":
+    case "inbox":
       return ["in_progress"];
     case "in_progress":
-      return ["backlog", "review"];
+      return ["inbox", "review"];
     case "review":
       return ["in_progress", "done"];
     case "done":

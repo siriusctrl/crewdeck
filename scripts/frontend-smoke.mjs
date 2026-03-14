@@ -14,6 +14,8 @@ const apiPort = 3101;
 const webPort = 4173;
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const webUrl = `http://127.0.0.1:${webPort}`;
+const columnSelector = "[data-column-label]";
+const cardSelector = "[data-card-title]";
 
 function assert(condition, message) {
   if (!condition) {
@@ -89,25 +91,35 @@ async function stopService(service) {
 }
 
 async function collectBoardState(page, title) {
-  return page.evaluate((targetTitle) => {
-    const columns = [...document.querySelectorAll(".column")].map((column) => ({
-      heading: column.querySelector("h3")?.textContent?.trim() || "",
-      cards: [...column.querySelectorAll(".task-card strong")].map((element) =>
-        element.textContent?.trim() || "",
-      ),
-    }));
+  return page.evaluate(
+    ({ nextColumnSelector, nextCardSelector, targetTitle }) => {
+      const columns = [...document.querySelectorAll(nextColumnSelector)].map((column) => ({
+        heading:
+          column.getAttribute("data-column-label") ||
+          column.querySelector("h3")?.textContent?.trim() ||
+          "",
+        cards: [...column.querySelectorAll(nextCardSelector)].map(
+          (card) => card.getAttribute("data-card-title") || "",
+        ),
+      }));
 
-    return {
-      theme: document.documentElement.dataset.theme,
-      columns,
-      matches: columns.reduce(
-        (count, column) =>
-          count +
-          column.cards.filter((cardTitle) => cardTitle === targetTitle).length,
-        0,
-      ),
-    };
-  }, title);
+      return {
+        theme: document.documentElement.dataset.theme,
+        columns,
+        matches: columns.reduce(
+          (count, column) =>
+            count +
+            column.cards.filter((cardTitle) => cardTitle === targetTitle).length,
+          0,
+        ),
+      };
+    },
+    {
+      nextColumnSelector: columnSelector,
+      nextCardSelector: cardSelector,
+      targetTitle: title,
+    },
+  );
 }
 
 function columnCards(state, heading) {
@@ -116,13 +128,12 @@ function columnCards(state, heading) {
 
 async function dispatchCardDrag(page, title, targetHeading) {
   await page.evaluate(
-    ({ sourceTitle, nextHeading }) => {
-      const source = [...document.querySelectorAll(".task-card")].find(
-        (card) =>
-          card.querySelector("strong")?.textContent?.trim() === sourceTitle,
+    ({ sourceTitle, nextHeading, nextColumnSelector, nextCardSelector }) => {
+      const source = [...document.querySelectorAll(nextCardSelector)].find(
+        (card) => card.getAttribute("data-card-title") === sourceTitle,
       );
-      const target = [...document.querySelectorAll(".column")].find(
-        (column) => column.querySelector("h3")?.textContent?.trim() === nextHeading,
+      const target = [...document.querySelectorAll(nextColumnSelector)].find(
+        (column) => column.getAttribute("data-column-label") === nextHeading,
       );
 
       if (!source) {
@@ -170,7 +181,12 @@ async function dispatchCardDrag(page, title, targetHeading) {
         }),
       );
     },
-    { sourceTitle: title, nextHeading: targetHeading },
+    {
+      sourceTitle: title,
+      nextHeading: targetHeading,
+      nextColumnSelector: columnSelector,
+      nextCardSelector: cardSelector,
+    },
   );
 }
 
@@ -227,13 +243,13 @@ try {
   });
 
   await page.goto(webUrl, { waitUntil: "networkidle" });
-  await page.waitForSelector(".column h3");
+  await page.waitForSelector(columnSelector);
 
   const smokeTitle = `Smoke ${Date.now()}`;
   const smokeComment = `Note ${Date.now()}`;
 
   currentStep = "create card";
-  await page.getByRole("button", { name: "New card" }).click();
+  await page.getByRole("button", { name: /New card/i }).click();
   await page.getByLabel("Title").fill(smokeTitle);
   await page.getByLabel("Description").fill("Exercise the main board workflow.");
   await page.getByLabel("Assignee").first().selectOption({ label: "Claude Code" });
@@ -241,18 +257,19 @@ try {
 
   currentStep = "wait for created card";
   await page.waitForFunction(
-    (title) =>
-      [...document.querySelectorAll(".task-card strong")].some(
-        (element) => element.textContent?.trim() === title,
+    ({ nextCardSelector, title }) =>
+      [...document.querySelectorAll(nextCardSelector)].some(
+        (card) => card.getAttribute("data-card-title") === title,
       ),
-    smokeTitle,
+    { nextCardSelector: cardSelector, title: smokeTitle },
   );
+  await page.getByRole("button", { name: /Ping Claude Code/i }).waitFor();
 
   let state = await collectBoardState(page, smokeTitle);
   assert(state.matches === 1, `Expected one new card after creation, found ${state.matches}`);
   assert(
-    columnCards(state, "Backlog").includes(smokeTitle),
-    "New card should land in Backlog",
+    columnCards(state, "Inbox").includes(smokeTitle),
+    "New card should land in Inbox",
   );
 
   currentStep = "drag into in progress";
@@ -260,18 +277,22 @@ try {
 
   currentStep = "wait for in progress";
   await page.waitForFunction(
-    (title) => {
-      const columns = [...document.querySelectorAll(".column")];
+    ({ nextColumnSelector, nextCardSelector, title }) => {
+      const columns = [...document.querySelectorAll(nextColumnSelector)];
       const inProgress = columns.find(
-        (column) => column.querySelector("h3")?.textContent?.trim() === "In Progress",
+        (column) => column.getAttribute("data-column-label") === "In Progress",
       );
 
       return !!inProgress &&
-        [...inProgress.querySelectorAll(".task-card strong")].some(
-          (element) => element.textContent?.trim() === title,
+        [...inProgress.querySelectorAll(nextCardSelector)].some(
+          (card) => card.getAttribute("data-card-title") === title,
         );
     },
-    smokeTitle,
+    {
+      nextColumnSelector: columnSelector,
+      nextCardSelector: cardSelector,
+      title: smokeTitle,
+    },
   );
 
   state = await collectBoardState(page, smokeTitle);
@@ -281,8 +302,8 @@ try {
     "Dragged card should move into In Progress",
   );
   assert(
-    !columnCards(state, "Backlog").includes(smokeTitle),
-    "Dragged card should leave Backlog",
+    !columnCards(state, "Inbox").includes(smokeTitle),
+    "Dragged card should leave Inbox",
   );
 
   currentStep = "ping agent";
@@ -290,18 +311,22 @@ try {
 
   currentStep = "wait for review";
   await page.waitForFunction(
-    (title) => {
-      const columns = [...document.querySelectorAll(".column")];
+    ({ nextColumnSelector, nextCardSelector, title }) => {
+      const columns = [...document.querySelectorAll(nextColumnSelector)];
       const review = columns.find(
-        (column) => column.querySelector("h3")?.textContent?.trim() === "Review",
+        (column) => column.getAttribute("data-column-label") === "Review",
       );
 
       return !!review &&
-        [...review.querySelectorAll(".task-card strong")].some(
-          (element) => element.textContent?.trim() === title,
+        [...review.querySelectorAll(nextCardSelector)].some(
+          (card) => card.getAttribute("data-card-title") === title,
         );
     },
-    smokeTitle,
+    {
+      nextColumnSelector: columnSelector,
+      nextCardSelector: cardSelector,
+      title: smokeTitle,
+    },
   );
 
   state = await collectBoardState(page, smokeTitle);
@@ -313,7 +338,7 @@ try {
 
   currentStep = "add discussion note";
   await page.getByRole("button", { name: "Discussion" }).click();
-  await page.getByPlaceholder("Add a note").fill(smokeComment);
+  await page.getByPlaceholder(/Add a note/i).fill(smokeComment);
   await page.getByRole("button", { name: "Add note" }).click();
   await page.waitForFunction(
     (comment) => document.body.innerText.includes(comment),
@@ -321,29 +346,42 @@ try {
   );
 
   currentStep = "move to done";
-  await page.getByRole("button", { name: "To done" }).click();
+  await page.getByRole("button", { name: /\u2192 done/i }).click();
   currentStep = "wait for done";
   await page.waitForFunction(
-    (title) => {
-      const columns = [...document.querySelectorAll(".column")];
+    ({ nextColumnSelector, nextCardSelector, title }) => {
+      const columns = [...document.querySelectorAll(nextColumnSelector)];
       const done = columns.find(
-        (column) => column.querySelector("h3")?.textContent?.trim() === "Done",
+        (column) => column.getAttribute("data-column-label") === "Done",
       );
 
       return !!done &&
-        [...done.querySelectorAll(".task-card strong")].some(
-          (element) => element.textContent?.trim() === title,
+        [...done.querySelectorAll(nextCardSelector)].some(
+          (card) => card.getAttribute("data-card-title") === title,
         );
     },
-    smokeTitle,
+    {
+      nextColumnSelector: columnSelector,
+      nextCardSelector: cardSelector,
+      title: smokeTitle,
+    },
   );
 
   state = await collectBoardState(page, smokeTitle);
   assert(state.matches === 1, `Expected one card after review completion, found ${state.matches}`);
   assert(columnCards(state, "Done").includes(smokeTitle), "Card should land in Done");
 
+  currentStep = "close drawer";
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.waitForFunction(
+    () =>
+      !document
+        .querySelector('aside[role="dialog"]')
+        ?.className.includes("translate-x-0"),
+  );
+
   currentStep = "toggle theme";
-  await page.getByRole("button", { name: /Palette/i }).click();
+  await page.getByRole("button", { name: "Light" }).click();
   await page.waitForFunction(() => document.documentElement.dataset.theme === "light");
 
   state = await collectBoardState(page, smokeTitle);

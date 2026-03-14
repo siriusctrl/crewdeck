@@ -1,107 +1,98 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Instrument+Sans:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @layer base {
   :root {
     color-scheme: dark;
-    --page-fill: #110f0d;
-    --page-bg:
-      radial-gradient(circle at top left, rgba(211, 136, 99, 0.18), transparent 24rem),
-      radial-gradient(circle at top right, rgba(106, 137, 128, 0.14), transparent 26rem),
-      linear-gradient(180deg, #1c1814 0%, #15120f 42%, #110f0d 100%);
-    --ink: #f2e8dc;
-    --muted: #b7a796;
-    --line: rgba(242, 232, 220, 0.08);
-    --line-strong: rgba(242, 232, 220, 0.16);
-    --panel-edge: rgba(255, 255, 255, 0.04);
-    --paper: rgba(37, 32, 28, 0.82);
-    --paper-strong: rgba(46, 40, 35, 0.94);
-    --field-bg: rgba(26, 22, 19, 0.9);
-    --field-border: rgba(242, 232, 220, 0.12);
-    --accent: #d18a67;
-    --accent-strong: #e3a98a;
-    --accent-soft: rgba(209, 138, 103, 0.16);
-    --accent-ink: #23140e;
-    --focus-ring: rgba(209, 138, 103, 0.34);
-    --shadow: 0 24px 70px rgba(0, 0, 0, 0.3);
-    --shadow-soft: 0 18px 42px rgba(0, 0, 0, 0.22);
-    --danger-bg: rgba(189, 96, 83, 0.18);
-    --danger-text: #ffbdb2;
-    --chip-bg: rgba(242, 232, 220, 0.04);
-    --chip-hover: rgba(242, 232, 220, 0.07);
-    --badge-bg: rgba(242, 232, 220, 0.08);
-    --empty-border: rgba(242, 232, 220, 0.14);
-    --empty-bg: rgba(17, 15, 13, 0.14);
-    --entry-bg: rgba(28, 24, 21, 0.88);
-    --entry-border: rgba(242, 232, 220, 0.08);
-    --tab-bg: rgba(242, 232, 220, 0.05);
-    --drop-ready: rgba(209, 138, 103, 0.24);
-    --drop-active: rgba(209, 138, 103, 0.48);
-    --drop-active-ring: rgba(209, 138, 103, 0.18);
-    --status-backlog:
-      linear-gradient(180deg, rgba(43, 37, 33, 0.98), rgba(28, 24, 21, 0.88)),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.04), transparent 42%);
-    --status-in-progress:
-      linear-gradient(180deg, rgba(58, 42, 34, 0.98), rgba(36, 28, 23, 0.88)),
-      linear-gradient(135deg, rgba(209, 138, 103, 0.12), transparent 42%);
-    --status-review:
-      linear-gradient(180deg, rgba(39, 45, 39, 0.98), rgba(28, 34, 30, 0.88)),
-      linear-gradient(135deg, rgba(143, 168, 130, 0.12), transparent 42%);
-    --status-done:
-      linear-gradient(180deg, rgba(41, 39, 37, 0.98), rgba(28, 26, 24, 0.88)),
-      linear-gradient(135deg, rgba(242, 232, 220, 0.06), transparent 42%);
+    --page-fill: #0e0e10;
+    --page-bg: #0e0e10;
+    --ink: #ececef;
+    --ink-secondary: #b0b0b8;
+    --muted: #6e6e7a;
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --paper: #18181b;
+    --paper-strong: #1e1e22;
+    --field-bg: #141416;
+    --field-border: rgba(255, 255, 255, 0.1);
+    --accent: #7c6bf5;
+    --accent-strong: #9585ff;
+    --accent-soft: rgba(124, 107, 245, 0.12);
+    --accent-ink: #fff;
+    --focus-ring: rgba(124, 107, 245, 0.4);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --danger-bg: rgba(239, 68, 68, 0.12);
+    --danger-text: #fca5a5;
+    --badge-bg: rgba(255, 255, 255, 0.06);
+    --empty-border: rgba(255, 255, 255, 0.08);
+    --empty-bg: rgba(255, 255, 255, 0.02);
+    --entry-bg: #141416;
+    --entry-border: rgba(255, 255, 255, 0.06);
+    --tab-bg: rgba(255, 255, 255, 0.04);
+    --drop-ready: rgba(124, 107, 245, 0.2);
+    --drop-active: rgba(124, 107, 245, 0.4);
+    --drop-active-ring: rgba(124, 107, 245, 0.15);
+    --status-inbox: rgba(110, 110, 122, 0.06);
+    --status-in-progress: rgba(245, 158, 11, 0.06);
+    --status-review: rgba(59, 130, 246, 0.06);
+    --status-done: rgba(34, 197, 94, 0.06);
+    --status-dot-inbox: #6e6e7a;
+    --status-dot-in-progress: #f59e0b;
+    --status-dot-review: #3b82f6;
+    --status-dot-done: #22c55e;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.24), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.06);
+    --panel-edge: transparent;
+    --chip-bg: rgba(255, 255, 255, 0.04);
+    --chip-hover: rgba(255, 255, 255, 0.07);
   }
 
   :root[data-theme="light"] {
     color-scheme: light;
-    --page-fill: #ece4d6;
-    --page-bg:
-      radial-gradient(circle at top left, rgba(188, 114, 64, 0.18), transparent 26rem),
-      radial-gradient(circle at top right, rgba(94, 118, 88, 0.16), transparent 24rem),
-      linear-gradient(180deg, #f6efe2 0%, #efe7d6 55%, #e7decd 100%);
-    --ink: #241a11;
-    --muted: #6e5d4f;
-    --line: rgba(36, 26, 17, 0.1);
-    --line-strong: rgba(36, 26, 17, 0.16);
-    --panel-edge: rgba(255, 255, 255, 0.54);
-    --paper: rgba(255, 249, 240, 0.74);
-    --paper-strong: rgba(255, 250, 242, 0.92);
-    --field-bg: rgba(255, 251, 246, 0.92);
-    --field-border: rgba(36, 26, 17, 0.14);
-    --accent: #b3532f;
-    --accent-strong: #ca6a44;
-    --accent-soft: rgba(179, 83, 47, 0.12);
-    --accent-ink: #fff7ef;
-    --focus-ring: rgba(179, 83, 47, 0.28);
-    --shadow: 0 24px 60px rgba(62, 43, 27, 0.12);
-    --shadow-soft: 0 18px 38px rgba(62, 43, 27, 0.1);
-    --danger-bg: rgba(135, 33, 25, 0.12);
-    --danger-text: #7d241d;
-    --chip-bg: rgba(255, 250, 242, 0.74);
-    --chip-hover: rgba(255, 250, 242, 0.94);
-    --badge-bg: rgba(36, 26, 17, 0.06);
-    --empty-border: rgba(36, 26, 17, 0.16);
-    --empty-bg: rgba(255, 252, 248, 0.34);
-    --entry-bg: rgba(255, 252, 248, 0.84);
-    --entry-border: rgba(36, 26, 17, 0.08);
-    --tab-bg: rgba(255, 252, 248, 0.72);
-    --drop-ready: rgba(179, 83, 47, 0.22);
-    --drop-active: rgba(179, 83, 47, 0.52);
-    --drop-active-ring: rgba(179, 83, 47, 0.16);
-    --status-backlog:
-      linear-gradient(180deg, rgba(255, 248, 238, 0.94), rgba(255, 248, 238, 0.58)),
-      linear-gradient(135deg, rgba(255, 255, 255, 0.36), transparent 42%);
-    --status-in-progress:
-      linear-gradient(180deg, rgba(255, 241, 226, 0.94), rgba(255, 241, 226, 0.58)),
-      linear-gradient(135deg, rgba(179, 83, 47, 0.12), transparent 42%);
-    --status-review:
-      linear-gradient(180deg, rgba(244, 247, 235, 0.96), rgba(244, 247, 235, 0.6)),
-      linear-gradient(135deg, rgba(90, 107, 72, 0.12), transparent 42%);
-    --status-done:
-      linear-gradient(180deg, rgba(239, 234, 224, 0.94), rgba(239, 234, 224, 0.58)),
-      linear-gradient(135deg, rgba(36, 26, 17, 0.06), transparent 42%);
+    --page-fill: #f8f8fa;
+    --page-bg: #f8f8fa;
+    --ink: #1a1a1e;
+    --ink-secondary: #4a4a54;
+    --muted: #8a8a96;
+    --line: rgba(0, 0, 0, 0.08);
+    --line-strong: rgba(0, 0, 0, 0.14);
+    --paper: #ffffff;
+    --paper-strong: #ffffff;
+    --field-bg: #f2f2f5;
+    --field-border: rgba(0, 0, 0, 0.12);
+    --accent: #6c5ce7;
+    --accent-strong: #5a4bd1;
+    --accent-soft: rgba(108, 92, 231, 0.08);
+    --accent-ink: #fff;
+    --focus-ring: rgba(108, 92, 231, 0.3);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --danger-bg: rgba(239, 68, 68, 0.08);
+    --danger-text: #dc2626;
+    --badge-bg: rgba(0, 0, 0, 0.05);
+    --empty-border: rgba(0, 0, 0, 0.1);
+    --empty-bg: rgba(0, 0, 0, 0.02);
+    --entry-bg: #f5f5f7;
+    --entry-border: rgba(0, 0, 0, 0.06);
+    --tab-bg: rgba(0, 0, 0, 0.04);
+    --drop-ready: rgba(108, 92, 231, 0.15);
+    --drop-active: rgba(108, 92, 231, 0.3);
+    --drop-active-ring: rgba(108, 92, 231, 0.12);
+    --status-inbox: rgba(138, 138, 150, 0.05);
+    --status-in-progress: rgba(217, 119, 6, 0.05);
+    --status-review: rgba(37, 99, 235, 0.05);
+    --status-done: rgba(22, 163, 106, 0.05);
+    --status-dot-inbox: #8a8a96;
+    --status-dot-in-progress: #d97706;
+    --status-dot-review: #2563eb;
+    --status-dot-done: #16a34a;
+    --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04);
+    --card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.06);
+    --panel-edge: transparent;
+    --chip-bg: rgba(0, 0, 0, 0.03);
+    --chip-hover: rgba(0, 0, 0, 0.06);
   }
-
   * {
     box-sizing: border-box;
   }
@@ -115,10 +106,12 @@
     min-height: 100vh;
     color: var(--ink);
     background: var(--page-bg);
-    font-family: "Instrument Sans", sans-serif;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
     font-weight: 400;
+    font-size: 14px;
     line-height: 1.5;
-    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   #root {
@@ -142,7 +135,7 @@
 
   input::placeholder,
   textarea::placeholder {
-    color: color-mix(in srgb, var(--muted) 88%, transparent);
+    color: var(--muted);
   }
 
   textarea {

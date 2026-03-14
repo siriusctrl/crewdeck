@@ -11,7 +11,6 @@ import {
   fieldLabelClass,
   fieldLabelTextClass,
   ghostButtonClass,
-  panelClass,
   primaryButtonClass,
 } from "../lib/ui";
 import { QuickAddComposer } from "./QuickAddComposer";
@@ -19,6 +18,8 @@ import { QuickAddComposer } from "./QuickAddComposer";
 type CardInspectorProps = {
   actors: Actor[];
   draft: CardDraft;
+  mode: "detail" | "compose";
+  isLoadingCard: boolean;
   selectedCard?: CardDetail;
   detailTab: "runs" | "discussion";
   commentBody: string;
@@ -39,6 +40,8 @@ type CardInspectorProps = {
 export function CardInspector({
   actors,
   draft,
+  mode,
+  isLoadingCard,
   selectedCard,
   detailTab,
   commentBody,
@@ -52,197 +55,171 @@ export function CardInspector({
   onCreateCard,
   onAddComment,
 }: CardInspectorProps) {
-  return (
-    <aside
-      className={cn(
-        panelClass,
-        "grid gap-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-auto",
-      )}
-    >
-      {selectedCard ? (
-        <>
-          <div className="grid gap-[0.36rem]">
-            <p className={eyebrowClass}>Card</p>
-            <h2 className={cn(displayTitleClass, "text-[clamp(1.6rem,2.4vw,2.2rem)]")}>
-              {selectedCard.title}
-            </h2>
-            <p className="text-[var(--muted)]">
-              {selectedCard.description || "No description."}
-            </p>
-          </div>
+  if (mode === "detail" && isLoadingCard) {
+    return (
+      <div className="grid gap-4">
+        <div>
+          <span className={eyebrowClass}>Card</span>
+          <h2 className={cn(displayTitleClass, "mt-1 text-lg")}>Loading…</h2>
+          <p className="mt-1.5 text-sm text-[var(--muted)]">
+            Fetching the latest card details.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-          <div className="grid gap-[0.8rem] sm:grid-cols-2">
-            <label className={fieldLabelClass}>
-              <span className={fieldLabelTextClass}>Assignee</span>
-              <select
-                className={fieldClass}
-                value={selectedCard.assigneeId || ""}
-                onChange={(event) =>
-                  void onAssignmentChange("assigneeId", event.target.value)
-                }
-              >
-                <option value="">Unassigned</option>
-                {actors.map((actor) => (
-                  <option key={actor.id} value={actor.id}>
-                    {actor.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className={fieldLabelClass}>
-              <span className={fieldLabelTextClass}>Reviewer</span>
-              <select
-                className={fieldClass}
-                value={selectedCard.reviewerId || ""}
-                onChange={(event) =>
-                  void onAssignmentChange("reviewerId", event.target.value)
-                }
-              >
-                <option value="">Unassigned</option>
-                {actors.map((actor) => (
-                  <option key={actor.id} value={actor.id}>
-                    {actor.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+  if (selectedCard) {
+    return (
+      <div className="grid gap-4">
+        <div>
+          <span className={eyebrowClass}>{formatStatus(selectedCard.status)}</span>
+          <h2 className={cn(displayTitleClass, "mt-1 text-lg")}>{selectedCard.title}</h2>
+          {selectedCard.description ? (
+            <p className="mt-1.5 text-sm text-[var(--muted)]">{selectedCard.description}</p>
+          ) : null}
+        </div>
 
-          <div className="flex flex-wrap gap-[0.6rem]">
-            {nextStatusOptions(selectedCard.status).map((status) => (
-              <button
-                key={status}
-                className={ghostButtonClass}
-                onClick={() => void onMoveCard(selectedCard.id, status)}
-                type="button"
-              >
-                To {formatStatus(status)}
-              </button>
-            ))}
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className={fieldLabelClass}>
+            <span className={fieldLabelTextClass}>Assignee</span>
+            <select
+              className={fieldClass}
+              value={selectedCard.assigneeId || ""}
+              onChange={(e) => void onAssignmentChange("assigneeId", e.target.value)}
+            >
+              <option value="">Unassigned</option>
+              {actors.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className={fieldLabelClass}>
+            <span className={fieldLabelTextClass}>Reviewer</span>
+            <select
+              className={fieldClass}
+              value={selectedCard.reviewerId || ""}
+              onChange={(e) => void onAssignmentChange("reviewerId", e.target.value)}
+            >
+              <option value="">Unassigned</option>
+              {actors.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
+        <div className="flex flex-wrap gap-2">
+          {nextStatusOptions(selectedCard.status).map((status) => (
+            <button
+              key={status}
+              className={ghostButtonClass}
+              onClick={() => void onMoveCard(selectedCard.id, status)}
+              type="button"
+            >
+              → {formatStatus(status)}
+            </button>
+          ))}
           {selectedCard.assignee?.type === "agent" ? (
             <button
-              className={cn(accentButtonClass, "justify-self-start")}
+              className={accentButtonClass}
               onClick={() => void onPingAgent()}
               type="button"
             >
               Ping {selectedCard.assignee.name}
             </button>
           ) : null}
-
-          <div className="grid gap-[0.9rem]">
-            <p className={eyebrowClass}>Activity</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              <button
-                className={cn(
-                  "w-full rounded-full border border-[var(--line)] bg-[var(--tab-bg)] px-[0.92rem] py-[0.72rem] text-left text-[var(--muted)] transition-[transform,border-color,background-color,box-shadow,color] duration-[220ms] ease-[cubic-bezier(0.25,1,0.5,1)] hover:border-[var(--line-strong)] hover:bg-[color-mix(in_srgb,var(--tab-bg)_78%,var(--paper-strong))] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--focus-ring)] motion-reduce:transform-none motion-reduce:transition-none",
-                  detailTab === "runs" &&
-                    "border-transparent bg-[var(--ink)] text-[var(--page-fill)]",
-                )}
-                onClick={() => onDetailTabChange("runs")}
-                type="button"
-              >
-                Agent runs
-              </button>
-              <button
-                className={cn(
-                  "w-full rounded-full border border-[var(--line)] bg-[var(--tab-bg)] px-[0.92rem] py-[0.72rem] text-left text-[var(--muted)] transition-[transform,border-color,background-color,box-shadow,color] duration-[220ms] ease-[cubic-bezier(0.25,1,0.5,1)] hover:border-[var(--line-strong)] hover:bg-[color-mix(in_srgb,var(--tab-bg)_78%,var(--paper-strong))] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--focus-ring)] motion-reduce:transform-none motion-reduce:transition-none",
-                  detailTab === "discussion" &&
-                    "border-transparent bg-[var(--ink)] text-[var(--page-fill)]",
-                )}
-                onClick={() => onDetailTabChange("discussion")}
-                type="button"
-              >
-                Discussion
-              </button>
-            </div>
-            {detailTab === "runs" ? (
-              <div className="grid max-h-64 gap-[0.8rem] overflow-auto pr-1">
-                {selectedCard.runs.length > 0 ? (
-                  selectedCard.runs.map((run) => (
-                    <article
-                      key={run.id}
-                      className="rounded-[1.1rem] border border-[var(--entry-border)] bg-[var(--entry-bg)] px-[0.96rem] py-[0.92rem]"
-                    >
-                      <header className="mb-[0.46rem] flex justify-between gap-3">
-                        <strong>{run.actor.name}</strong>
-                        <span className="text-[0.8rem] text-[var(--muted)]">
-                          {new Date(run.createdAt).toLocaleString()}
-                        </span>
-                      </header>
-                      <p className="text-[var(--muted)]">{run.summary}</p>
-                      <small className="mt-[0.56rem] inline-block text-[0.7rem] uppercase tracking-[0.16em] text-[var(--accent)]">
-                        {run.status}
-                      </small>
-                    </article>
-                  ))
-                ) : (
-                  <div className="rounded-[1.35rem] border border-dashed border-[var(--empty-border)] bg-[var(--empty-bg)] px-[0.95rem] py-[0.85rem] text-[var(--muted)]">
-                    <span>No agent runs recorded yet.</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                <div className="grid max-h-[23rem] gap-[0.8rem] overflow-auto pr-1">
-                  {selectedCard.comments.map((comment) => (
-                    <article
-                      key={comment.id}
-                      className="rounded-[1.1rem] border border-[var(--entry-border)] bg-[var(--entry-bg)] px-[0.96rem] py-[0.92rem]"
-                    >
-                      <header className="mb-[0.46rem] flex justify-between gap-3">
-                        <strong>{comment.author.name}</strong>
-                        <span className="text-[0.8rem] text-[var(--muted)]">
-                          {new Date(comment.createdAt).toLocaleString()}
-                        </span>
-                      </header>
-                      <p className="text-[var(--muted)]">{comment.body}</p>
-                    </article>
-                  ))}
-                </div>
-                <form className="grid gap-[0.72rem]" onSubmit={onAddComment}>
-                  <textarea
-                    className={cn(fieldClass, "min-h-28")}
-                    value={commentBody}
-                    onChange={(event) => onCommentBodyChange(event.target.value)}
-                    placeholder="Add a note"
-                    rows={4}
-                  />
-                  <button
-                    className={cn(primaryButtonClass, "justify-self-start")}
-                    disabled={isSaving}
-                    type="submit"
-                  >
-                    Add note
-                  </button>
-                </form>
-              </>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="grid gap-4">
-          <div className="rounded-[1.35rem] border border-dashed border-[var(--empty-border)] bg-[var(--empty-bg)] p-4">
-            <p className={eyebrowClass}>Compose</p>
-            <h2
-              className={cn(
-                displayTitleClass,
-                "mt-2 text-[clamp(1.5rem,2.2vw,2rem)] text-[var(--ink)]",
-              )}
-            >
-              Create a card
-            </h2>
-          </div>
-          <QuickAddComposer
-            actors={actors}
-            draft={draft}
-            isSaving={isSaving}
-            onDraftChange={onDraftChange}
-            onSubmit={onCreateCard}
-          />
         </div>
-      )}
-    </aside>
+        <div className="border-t border-[var(--line)] pt-3">
+          <div className="mb-3 flex gap-1">
+            <button
+              className={cn(
+                "rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+                detailTab === "runs"
+                  ? "bg-[var(--ink)] text-[var(--page-fill)]"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]",
+              )}
+              onClick={() => onDetailTabChange("runs")}
+              type="button"
+            >
+              Runs
+            </button>
+            <button
+              className={cn(
+                "rounded-md px-3 py-1.5 text-[13px] font-medium transition-colors",
+                detailTab === "discussion"
+                  ? "bg-[var(--ink)] text-[var(--page-fill)]"
+                  : "text-[var(--muted)] hover:text-[var(--ink)]",
+              )}
+              onClick={() => onDetailTabChange("discussion")}
+              type="button"
+            >
+              Discussion
+            </button>
+          </div>
+
+          {detailTab === "runs" ? (
+            <div className="grid gap-2">
+              {selectedCard.runs.length > 0 ? (
+                selectedCard.runs.map((run) => (
+                  <article key={run.id} className="rounded-md border border-[var(--entry-border)] bg-[var(--entry-bg)] p-3">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="font-medium">{run.actor.name}</span>
+                      <span className="text-[var(--muted)]">{new Date(run.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--muted)]">{run.summary}</p>
+                    <span className="mt-1 inline-block text-[11px] font-medium uppercase tracking-wide text-[var(--accent)]">{run.status}</span>
+                  </article>
+                ))
+              ) : (
+                <p className="py-4 text-center text-[13px] text-[var(--muted)]">No agent runs yet</p>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              <div className="grid gap-2">
+                {selectedCard.comments.map((comment) => (
+                  <article key={comment.id} className="rounded-md border border-[var(--entry-border)] bg-[var(--entry-bg)] p-3">
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className="font-medium">{comment.author.name}</span>
+                      <span className="text-[var(--muted)]">{new Date(comment.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--muted)]">{comment.body}</p>
+                  </article>
+                ))}
+              </div>
+              <form className="grid gap-2" onSubmit={onAddComment}>
+                <textarea
+                  className={cn(fieldClass, "min-h-20")}
+                  value={commentBody}
+                  onChange={(e) => onCommentBodyChange(e.target.value)}
+                  placeholder="Add a note…"
+                  rows={3}
+                />
+                <button className={cn(primaryButtonClass, "justify-self-start")} disabled={isSaving} type="submit">
+                  Add note
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4">
+      <div>
+        <span className={eyebrowClass}>New card</span>
+        <h2 className={cn(displayTitleClass, "mt-1 text-lg")}>Create a card</h2>
+      </div>
+      <QuickAddComposer
+        actors={actors}
+        draft={draft}
+        isSaving={isSaving}
+        onDraftChange={onDraftChange}
+        onSubmit={onCreateCard}
+      />
+    </div>
   );
 }

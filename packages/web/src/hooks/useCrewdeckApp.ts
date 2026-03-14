@@ -33,6 +33,9 @@ export function useCrewdeckApp() {
   const [error, setError] = useState<string>();
   const [draft, setDraft] = useState<CardDraft>(defaultCardDraft);
   const [commentBody, setCommentBody] = useState("");
+  const [isComposing, setIsComposing] = useState(false);
+  const selectedBoardIdRef = useRef<string>();
+  const selectedCardIdRef = useRef<string>();
   const dragSourceCardIdRef = useRef<string>();
 
   const selectedBoard = boards.find((board) => board.id === selectedBoardId);
@@ -72,6 +75,14 @@ export function useCrewdeckApp() {
   }, []);
 
   useEffect(() => {
+    selectedBoardIdRef.current = selectedBoardId;
+  }, [selectedBoardId]);
+
+  useEffect(() => {
+    selectedCardIdRef.current = selectedCardId;
+  }, [selectedCardId]);
+
+  useEffect(() => {
     if (!selectedBoardId) {
       return;
     }
@@ -82,17 +93,6 @@ export function useCrewdeckApp() {
       try {
         const snapshot = await getBoardSnapshot(boardId);
         setCards(snapshot.cards);
-
-        setSelectedCardId((currentCardId) => {
-          if (
-            currentCardId &&
-            snapshot.cards.some((card) => card.id === currentCardId)
-          ) {
-            return currentCardId;
-          }
-
-          return snapshot.cards[0]?.id;
-        });
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "Unable to load board");
       }
@@ -108,16 +108,27 @@ export function useCrewdeckApp() {
     }
 
     const cardId = selectedCardId;
+    let cancelled = false;
+    setSelectedCard(undefined);
 
     async function loadCard() {
       try {
-        setSelectedCard(await getCard(cardId));
+        const card = await getCard(cardId);
+
+        if (!cancelled && selectedCardIdRef.current === cardId) {
+          setSelectedCard(card);
+        }
       } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to load card");
+        if (!cancelled && selectedCardIdRef.current === cardId) {
+          setError(cause instanceof Error ? cause.message : "Unable to load card");
+        }
       }
     }
 
     void loadCard();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCardId]);
 
   function updateDraft(field: keyof CardDraft, value: string): void {
@@ -153,23 +164,27 @@ export function useCrewdeckApp() {
   }
 
   async function refreshBoardAndCard(cardId?: string) {
-    if (!selectedBoardId) {
+    const boardId = selectedBoardIdRef.current;
+
+    if (!boardId) {
       return;
     }
 
-    const snapshot = await getBoardSnapshot(selectedBoardId);
+    const snapshot = await getBoardSnapshot(boardId);
     setCards(snapshot.cards);
 
-    const nextCardId = cardId ?? selectedCardId ?? snapshot.cards[0]?.id;
+    const nextCardId = cardId ?? selectedCardIdRef.current ?? snapshot.cards[0]?.id;
     const resolvedCardId =
       nextCardId && snapshot.cards.some((card) => card.id === nextCardId)
         ? nextCardId
         : snapshot.cards[0]?.id;
 
     if (resolvedCardId) {
+      selectedCardIdRef.current = resolvedCardId;
       setSelectedCardId(resolvedCardId);
       setSelectedCard(await getCard(resolvedCardId));
     } else {
+      selectedCardIdRef.current = undefined;
       setSelectedCard(undefined);
     }
   }
@@ -203,6 +218,8 @@ export function useCrewdeckApp() {
   }
 
   function selectBoard(boardId: string): void {
+    selectedBoardIdRef.current = boardId;
+    selectedCardIdRef.current = undefined;
     startTransition(() => {
       setSelectedBoardId(boardId);
       setSelectedCardId(undefined);
@@ -210,18 +227,35 @@ export function useCrewdeckApp() {
   }
 
   function selectCard(cardId: string): void {
+    setIsComposing(false);
+    selectedCardIdRef.current = cardId;
+    setSelectedCard(undefined);
     setSelectedCardId(cardId);
   }
 
   function clearSelectedCard(): void {
+    selectedCardIdRef.current = undefined;
     setSelectedCardId(undefined);
     setSelectedCard(undefined);
+  }
+
+  function openComposer(): void {
+    selectedCardIdRef.current = undefined;
+    setSelectedCardId(undefined);
+    setSelectedCard(undefined);
+    setIsComposing(true);
+  }
+
+  function closeDrawer(): void {
+    selectedCardIdRef.current = undefined;
+    setSelectedCardId(undefined);
+    setSelectedCard(undefined);
+    setIsComposing(false);
   }
 
   function startDrag(cardId: string): void {
     dragSourceCardIdRef.current = cardId;
     setDraggedCardId(cardId);
-    setSelectedCardId(cardId);
   }
 
   async function handleCreateCard(event: React.FormEvent<HTMLFormElement>) {
@@ -251,10 +285,52 @@ export function useCrewdeckApp() {
   }
 
   async function moveCard(cardId: string, status: CardStatus) {
-    await runSavingAction(async () => {
+    const nextUpdatedAt = new Date().toISOString();
+
+    setError(undefined);
+    setCards((prev) =>
+      prev.map((card) =>
+        card.id === cardId ? { ...card, status, updatedAt: nextUpdatedAt } : card,
+      ),
+    );
+    setSelectedCard((currentCard) =>
+      currentCard?.id === cardId
+        ? { ...currentCard, status, updatedAt: nextUpdatedAt }
+        : currentCard,
+    );
+    resetDragState();
+
+    try {
       await updateCardStatus(cardId, status);
-      await refreshBoardAndCard(cardId);
-    }, "Unable to move card", { resetDragState: true });
+
+      if (selectedBoardIdRef.current) {
+        const snapshot = await getBoardSnapshot(selectedBoardIdRef.current);
+        setCards(snapshot.cards);
+      }
+
+      if (selectedCardIdRef.current === cardId) {
+        setSelectedCard(await getCard(cardId));
+      }
+    } catch (cause) {
+      setError(getErrorMessage(cause, "Unable to move card"));
+
+      if (selectedBoardIdRef.current) {
+        try {
+          const snapshot = await getBoardSnapshot(selectedBoardIdRef.current);
+          setCards(snapshot.cards);
+        } catch {
+          // Preserve the original move error if the recovery refresh also fails.
+        }
+      }
+
+      if (selectedCardIdRef.current === cardId) {
+        try {
+          setSelectedCard(await getCard(cardId));
+        } catch {
+          // Preserve the original move error if the recovery fetch also fails.
+        }
+      }
+    }
   }
 
   async function updateAssignment(
@@ -330,6 +406,9 @@ export function useCrewdeckApp() {
     selectBoard,
     selectCard,
     clearSelectedCard,
+    openComposer,
+    closeDrawer,
+    isComposing,
     startDrag,
     resetDragState,
     canDropCard,

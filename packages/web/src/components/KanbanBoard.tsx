@@ -42,32 +42,30 @@ export function KanbanBoard({
 
   return (
     <div
-      className="board-header grid gap-[0.95rem] pb-2 md:grid-cols-2 xl:grid-cols-4"
+      className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
       aria-label={selectedBoard?.name || "Board"}
-      data-cards-count={cards.length}
-      data-agents-count={actors.filter((actor) => actor.type === "agent").length}
     >
-        {columns.map((column) => (
-          <KanbanColumn
-            key={column.status}
-            actors={actors}
-            cards={groupedCards[column.status]}
-            column={column}
-            draggedCard={draggedCard}
-            draggedCardId={draggedCardId}
-            dragOverStatus={dragOverStatus}
-            canDropCard={canDropCard}
-            getDragSourceCardId={getDragSourceCardId}
-            isDropReady={canDropCard(draggedCardId, column.status)}
-            onDragOverStatusChange={onDragOverStatusChange}
-            onDropCard={onDropCard}
-            onEndDrag={onEndDrag}
-            onPrimeDrag={onPrimeDrag}
-            onSelectCard={onSelectCard}
-            onStartDrag={onStartDrag}
-            selectedCardId={selectedCardId}
-          />
-        ))}
+      {columns.map((column) => (
+        <KanbanColumn
+          key={column.status}
+          actors={actors}
+          cards={groupedCards[column.status]}
+          column={column}
+          draggedCard={draggedCard}
+          draggedCardId={draggedCardId}
+          dragOverStatus={dragOverStatus}
+          canDropCard={canDropCard}
+          getDragSourceCardId={getDragSourceCardId}
+          isDropReady={canDropCard(draggedCardId, column.status)}
+          onDragOverStatusChange={onDragOverStatusChange}
+          onDropCard={onDropCard}
+          onEndDrag={onEndDrag}
+          onPrimeDrag={onPrimeDrag}
+          onSelectCard={onSelectCard}
+          onStartDrag={onStartDrag}
+          selectedCardId={selectedCardId}
+        />
+      ))}
     </div>
   );
 }

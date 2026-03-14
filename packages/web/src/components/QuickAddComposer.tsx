@@ -3,14 +3,7 @@ import type React from "react";
 import type { Actor } from "@crewdeck/core";
 
 import type { CardDraft } from "../lib/draft";
-import {
-  cn,
-  eyebrowClass,
-  fieldClass,
-  fieldLabelClass,
-  fieldLabelTextClass,
-  primaryButtonClass,
-} from "../lib/ui";
+import { cn, fieldClass, fieldLabelClass, fieldLabelTextClass, primaryButtonClass } from "../lib/ui";
 
 type QuickAddComposerProps = {
   actors: Actor[];
@@ -28,28 +21,27 @@ export function QuickAddComposer({
   onSubmit,
 }: QuickAddComposerProps) {
   return (
-    <form className="grid gap-[0.9rem]" onSubmit={onSubmit}>
-      <p className={eyebrowClass}>New card</p>
-      <div className="grid gap-[0.85rem]">
-        <label className={fieldLabelClass}>
-          <span className={fieldLabelTextClass}>Title</span>
-          <input
-            className={fieldClass}
-            value={draft.title}
-            onChange={(event) => onDraftChange("title", event.target.value)}
-            placeholder="Refine drag states"
-            required
-          />
-        </label>
-        <label className={fieldLabelClass}>
-          <span className={fieldLabelTextClass}>Description</span>
-          <input
-            className={fieldClass}
-            value={draft.description}
-            onChange={(event) => onDraftChange("description", event.target.value)}
-            placeholder="What needs to happen?"
-          />
-        </label>
+    <form className="grid gap-3" onSubmit={onSubmit}>
+      <label className={fieldLabelClass}>
+        <span className={fieldLabelTextClass}>Title</span>
+        <input
+          className={fieldClass}
+          value={draft.title}
+          onChange={(event) => onDraftChange("title", event.target.value)}
+          placeholder="What needs to be done?"
+          required
+        />
+      </label>
+      <label className={fieldLabelClass}>
+        <span className={fieldLabelTextClass}>Description</span>
+        <input
+          className={fieldClass}
+          value={draft.description}
+          onChange={(event) => onDraftChange("description", event.target.value)}
+          placeholder="Optional details"
+        />
+      </label>
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className={fieldLabelClass}>
           <span className={fieldLabelTextClass}>Assignee</span>
           <select
@@ -80,14 +72,14 @@ export function QuickAddComposer({
             ))}
           </select>
         </label>
-        <button
-          className={cn(primaryButtonClass, "mt-1 min-h-[3.1rem] justify-self-start")}
-          disabled={isSaving}
-          type="submit"
-        >
-          {isSaving ? "Working..." : "Create card"}
-        </button>
       </div>
+      <button
+        className={cn(primaryButtonClass, "mt-1 justify-self-start")}
+        disabled={isSaving}
+        type="submit"
+      >
+        {isSaving ? "Creating…" : "Create card"}
+      </button>
     </form>
   );
 }
