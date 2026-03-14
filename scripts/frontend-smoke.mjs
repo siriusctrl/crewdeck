@@ -227,12 +227,13 @@ try {
   });
 
   await page.goto(webUrl, { waitUntil: "networkidle" });
-  await page.waitForSelector(".board-header h2");
+  await page.waitForSelector(".column h3");
 
   const smokeTitle = `Smoke ${Date.now()}`;
   const smokeComment = `Note ${Date.now()}`;
 
   currentStep = "create card";
+  await page.getByRole("button", { name: "New card" }).click();
   await page.getByLabel("Title").fill(smokeTitle);
   await page.getByLabel("Description").fill("Exercise the main board workflow.");
   await page.getByLabel("Assignee").first().selectOption({ label: "Claude Code" });
@@ -312,7 +313,7 @@ try {
 
   currentStep = "add discussion note";
   await page.getByRole("button", { name: "Discussion" }).click();
-  await page.getByPlaceholder("Leave a review note or tighten the brief...").fill(smokeComment);
+  await page.getByPlaceholder("Add a note").fill(smokeComment);
   await page.getByRole("button", { name: "Add note" }).click();
   await page.waitForFunction(
     (comment) => document.body.innerText.includes(comment),
@@ -320,7 +321,7 @@ try {
   );
 
   currentStep = "move to done";
-  await page.getByRole("button", { name: "Move to done" }).click();
+  await page.getByRole("button", { name: "To done" }).click();
   currentStep = "wait for done";
   await page.waitForFunction(
     (title) => {

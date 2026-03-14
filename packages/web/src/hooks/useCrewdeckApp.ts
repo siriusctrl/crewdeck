@@ -213,6 +213,11 @@ export function useCrewdeckApp() {
     setSelectedCardId(cardId);
   }
 
+  function clearSelectedCard(): void {
+    setSelectedCardId(undefined);
+    setSelectedCard(undefined);
+  }
+
   function startDrag(cardId: string): void {
     dragSourceCardIdRef.current = cardId;
     setDraggedCardId(cardId);
@@ -324,6 +329,7 @@ export function useCrewdeckApp() {
     getDragSourceCardId,
     selectBoard,
     selectCard,
+    clearSelectedCard,
     startDrag,
     resetDragState,
     canDropCard,

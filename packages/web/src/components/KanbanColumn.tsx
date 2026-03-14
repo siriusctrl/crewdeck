@@ -1,6 +1,7 @@
 import type { Actor, Card, CardStatus } from "@crewdeck/core";
 
 import type { StatusColumn } from "../lib/board";
+import { cn, displayTitleClass, eyebrowClass, motionSafeClass } from "../lib/ui";
 import { TaskCard } from "./TaskCard";
 
 type KanbanColumnProps = {
@@ -20,6 +21,13 @@ type KanbanColumnProps = {
   onEndDrag: () => void;
   onDragOverStatusChange: (status?: CardStatus) => void;
   onDropCard: (cardId: string, status: CardStatus) => Promise<void>;
+};
+
+const columnStatusClass: Record<CardStatus, string> = {
+  backlog: "[background:var(--status-backlog)]",
+  in_progress: "[background:var(--status-in-progress)]",
+  review: "[background:var(--status-review)]",
+  done: "[background:var(--status-done)]",
 };
 
 export function KanbanColumn({
@@ -44,14 +52,13 @@ export function KanbanColumn({
 
   return (
     <section
-      className={[
-        "column",
-        `status-${column.status}`,
-        isDropReady ? "drop-ready" : "",
-        isDropActive ? "drop-active" : "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={cn(
+        `column min-h-[31rem] rounded-[1.8rem] border border-[var(--line)] p-[0.96rem] shadow-[inset_0_1px_0_var(--panel-edge)] transition-[border-color,box-shadow,transform] ${motionSafeClass}`,
+        columnStatusClass[column.status],
+        isDropReady && "border-[var(--drop-ready)]",
+        isDropActive &&
+          "border-[var(--drop-active)] shadow-[inset_0_0_0_1px_var(--drop-active-ring),0_0_0_1px_var(--drop-active-ring)]",
+      )}
       onDragOver={(event) => {
         if (!isDropReady) {
           return;
@@ -80,15 +87,17 @@ export function KanbanColumn({
         void onDropCard(droppedCardId, column.status);
       }}
     >
-      <header>
+      <header className="mb-[0.88rem] flex items-baseline justify-between gap-4">
         <div>
-          <p>{column.eyebrow}</p>
-          <h3>{column.label}</h3>
+          <p className={eyebrowClass}>{column.eyebrow}</p>
+          <h3 className={cn(displayTitleClass, "mt-1 text-[1.4rem]")}>{column.label}</h3>
         </div>
-        <span className="column-count">{cards.length}</span>
+        <span className="inline-grid min-h-8 min-w-8 place-items-center rounded-full bg-[var(--badge-bg)] px-[0.55rem] text-[0.82rem] font-semibold text-[var(--ink)]">
+          {cards.length}
+        </span>
       </header>
 
-      <div className="column-stack">
+      <div className="grid gap-[0.86rem]">
         {cards.map((card) => (
           <TaskCard
             key={card.id}
@@ -104,7 +113,7 @@ export function KanbanColumn({
         ))}
 
         {cards.length === 0 ? (
-          <div className="empty-slot">
+          <div className="rounded-[1.35rem] border border-dashed border-[var(--empty-border)] bg-[var(--empty-bg)] p-4 text-[var(--muted)]">
             <span>
               {isDropReady ? "Drop the selected card here." : "Nothing parked here yet."}
             </span>

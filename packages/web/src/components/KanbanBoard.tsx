@@ -41,25 +41,12 @@ export function KanbanBoard({
   const draggedCard = cards.find((card) => card.id === draggedCardId);
 
   return (
-    <>
-      <header className="board-header">
-        <div>
-          <p className="eyebrow">Board view</p>
-          <h2>{selectedBoard?.name}</h2>
-          <div className="board-meta">
-            <span>{cards.length} cards</span>
-            <span>
-              {actors.filter((actor) => actor.type === "agent").length} agents online
-            </span>
-          </div>
-        </div>
-        <p>
-          Drag cards across lanes on desktop. The detail panel still keeps
-          mobile-first state buttons as a fallback.
-        </p>
-      </header>
-
-      <div className="kanban">
+    <div
+      className="board-header grid gap-[0.95rem] pb-2 md:grid-cols-2 xl:grid-cols-4"
+      aria-label={selectedBoard?.name || "Board"}
+      data-cards-count={cards.length}
+      data-agents-count={actors.filter((actor) => actor.type === "agent").length}
+    >
         {columns.map((column) => (
           <KanbanColumn
             key={column.status}
@@ -81,7 +68,6 @@ export function KanbanBoard({
             selectedCardId={selectedCardId}
           />
         ))}
-      </div>
-    </>
+    </div>
   );
 }
